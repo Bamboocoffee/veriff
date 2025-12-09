@@ -4,7 +4,7 @@ from django.db import models
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
-from .forms import ReviewDecisionForm, VerificationCaseForm
+from .forms import ReviewDecisionForm, RiskTuningForm, VerificationCaseForm
 from .models import VerificationCase
 
 
@@ -189,3 +189,61 @@ def sdk_playground(request):
         "sdk_playground.html",
         {"sample_steps": sample_steps, "customization": customization},
     )
+
+
+def risk_tuning(request):
+    """Adjust thresholds and preview how a case would be decided."""
+    cases = VerificationCase.objects.all()
+    choices = [(str(c.pk), f"{c.full_name} ({c.get_status_display()})") for c in cases]
+    preview = None
+    selected_case = None
+    form = RiskTuningForm(request.POST or None, case_choices=choices)
+    if request.method == "POST" and form.is_valid():
+        selected_case = get_object_or_404(VerificationCase, pk=form.cleaned_data["case_id"])
+        selected_case.run_full_evaluation(save=False)
+        preview = simulate_decision(
+            selected_case,
+            {
+                "min_doc_score": form.cleaned_data["min_doc_score"],
+                "min_face_match": form.cleaned_data["min_face_match"],
+                "fraud_review_cutoff": form.cleaned_data["fraud_review_cutoff"],
+                "enforce_liveness": form.cleaned_data["enforce_liveness"],
+            },
+        )
+    return render(
+        request,
+        "risk_tuning.html",
+        {"form": form, "preview": preview, "selected_case": selected_case},
+    )
+
+
+def simulate_decision(case: VerificationCase, thresholds: dict):
+    """Apply custom thresholds to a case without persisting."""
+    reasons = []
+    decision = VerificationCase.STATUS_APPROVED
+
+    if case.aml_findings.get("sanctions"):
+        decision = VerificationCase.STATUS_REJECTED
+        reasons.append("Sanctions hit")
+    if thresholds.get("enforce_liveness") and not case.liveness_passed:
+        decision = VerificationCase.STATUS_REVIEW
+        reasons.append("Liveness required but not passed")
+    if case.doc_authenticity_score < thresholds.get("min_doc_score", 55):
+        decision = VerificationCase.STATUS_REVIEW
+        reasons.append(f"Doc authenticity below {thresholds.get('min_doc_score')}")
+    if case.face_match_score < thresholds.get("min_face_match", 60):
+        decision = VerificationCase.STATUS_REVIEW
+        reasons.append(f"Face match below {thresholds.get('min_face_match')}")
+    if case.fraud_risk_score >= thresholds.get("fraud_review_cutoff", 45):
+        decision = VerificationCase.STATUS_REVIEW
+        reasons.append(f"Fraud score above {thresholds.get('fraud_review_cutoff')}")
+    if not case.age_verified:
+        decision = VerificationCase.STATUS_REVIEW
+        reasons.append("Age under threshold")
+
+    return {
+        "decision": decision,
+        "reasons": reasons or ["All signals within thresholds"],
+        "case": case,
+        "thresholds": thresholds,
+    }

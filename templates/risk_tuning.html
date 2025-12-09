@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+    <h2>Risk tuning</h2>
+    <p class="stat-label">Adjust thresholds and preview the decision before applying changes to your policy.</p>
+</div>
+
+<div class="panel">
+    <form method="post" class="form-grid">
+        {% csrf_token %}
+        <div class="layout-grid">
+            <div class="list-item">
+                <strong>Select case</strong>
+                {{ form.case_id.label_tag }}{{ form.case_id }}
+            </div>
+            <div class="list-item">
+                <strong>Document + biometric</strong>
+                {{ form.min_doc_score.label_tag }}{{ form.min_doc_score }}
+                {{ form.min_face_match.label_tag }}{{ form.min_face_match }}
+                {{ form.enforce_liveness.label_tag }}{{ form.enforce_liveness }}
+            </div>
+            <div class="list-item">
+                <strong>Fraud risk</strong>
+                {{ form.fraud_review_cutoff.label_tag }}{{ form.fraud_review_cutoff }}
+            </div>
+        </div>
+        <button type="submit">Preview decision</button>
+    </form>
+</div>
+
+{% if preview %}
+<div class="panel">
+    <h3>Preview</h3>
+    <div class="pill-row">
+        <span class="chip">Doc {{ preview.case.doc_authenticity_score }}%</span>
+        <span class="chip">Face {{ preview.case.face_match_score }}%</span>
+        <span class="chip {% if preview.case.fraud_risk_score > 40 %}danger{% else %}warn{% endif %}">Fraud {{ preview.case.fraud_risk_score }}</span>
+    </div>
+    <p class="stat-label">Decision: {{ preview.decision|capfirst }}</p>
+    <ul class="list">
+        {% for reason in preview.reasons %}
+            <li class="list-item">{{ reason }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+{% endblock %}
