@@ -1,6 +1,9 @@
 from datetime import date, timedelta
 
+import csv
+
 from django.db import models
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
@@ -189,6 +192,52 @@ def sdk_playground(request):
         "sdk_playground.html",
         {"sample_steps": sample_steps, "customization": customization},
     )
+
+
+def export_cases_csv(request):
+    """Export recent verification cases for ops review."""
+    cases = VerificationCase.objects.all().select_related()[:200]
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="verifications.csv"'
+    writer = csv.writer(response)
+    writer.writerow(
+        [
+            "id",
+            "full_name",
+            "email",
+            "country",
+            "issuing_country",
+            "document_type",
+            "status",
+            "doc_authenticity_score",
+            "face_match_score",
+            "fraud_risk_score",
+            "age_verified",
+            "aml_pep",
+            "sanctions",
+            "created_at",
+        ]
+    )
+    for case in cases:
+        writer.writerow(
+            [
+                case.pk,
+                case.full_name,
+                case.email,
+                case.country,
+                case.issuing_country,
+                case.get_document_type_display(),
+                case.get_status_display(),
+                case.doc_authenticity_score,
+                case.face_match_score,
+                case.fraud_risk_score,
+                case.age_verified,
+                bool(case.aml_findings.get("pep")) if case.aml_findings else False,
+                bool(case.aml_findings.get("sanctions")) if case.aml_findings else False,
+                case.created_at,
+            ]
+        )
+    return response
 
 
 def risk_tuning(request):
