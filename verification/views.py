@@ -135,6 +135,15 @@ def case_detail(request, pk):
     )
 
 
+def rerun_case(request, pk):
+    """Allow quick re-evaluation after metadata tweaks or retry attempts."""
+    case = get_object_or_404(VerificationCase, pk=pk)
+    if request.method == "POST":
+        case.run_full_evaluation()
+        return redirect(reverse("case_detail", kwargs={"pk": case.pk}))
+    return redirect(reverse("case_detail", kwargs={"pk": case.pk}))
+
+
 def sdk_playground(request):
     """Show how the SDK-based onboarding flow might be stitched together."""
     sample_steps = [

@@ -105,6 +105,12 @@
 <div class="panel">
     <h3>Decision</h3>
     <p class="stat-label">{{ case.risk_summary }}</p>
-    <a href="{% url 'dashboard' %}" class="chip">← Back to overview</a>
+    <div class="pill-row">
+        <form method="post" action="{% url 'rerun_case' case.pk %}">
+            {% csrf_token %}
+            <button type="submit">Re-run evaluation</button>
+        </form>
+        <a href="{% url 'dashboard' %}" class="chip">← Back to overview</a>
+    </div>
 </div>
 {% endblock %}

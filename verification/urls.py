@@ -6,5 +6,6 @@ urlpatterns = [
     path("", views.dashboard, name="dashboard"),
     path("start/", views.start_verification, name="start_verification"),
     path("case/<int:pk>/", views.case_detail, name="case_detail"),
+    path("case/<int:pk>/rerun/", views.rerun_case, name="rerun_case"),
     path("sdk-playground/", views.sdk_playground, name="sdk_playground"),
 ]
