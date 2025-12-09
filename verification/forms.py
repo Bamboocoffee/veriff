@@ -36,3 +36,15 @@ class VerificationCaseForm(forms.ModelForm):
         if cleaned.get("attempt_count", 1) < 1:
             self.add_error("attempt_count", "Attempts must be at least one.")
         return cleaned
+
+
+class ReviewDecisionForm(forms.Form):
+    decision = forms.ChoiceField(
+        choices=[
+            (VerificationCase.STATUS_APPROVED, "Approve"),
+            (VerificationCase.STATUS_REJECTED, "Decline"),
+            (VerificationCase.STATUS_REVIEW, "Keep in review"),
+        ]
+    )
+    reviewer_name = forms.CharField(max_length=120, required=False, label="Reviewer")
+    reviewer_notes = forms.CharField(widget=forms.Textarea(attrs={"rows": 2}), required=False, label="Notes")

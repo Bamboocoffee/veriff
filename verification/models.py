@@ -62,6 +62,9 @@ class VerificationCase(models.Model):
     age_verified = models.BooleanField(default=False)
     status = models.CharField(max_length=24, choices=STATUS_CHOICES, default=STATUS_PENDING)
     risk_summary = models.TextField(blank=True)
+    reviewer_name = models.CharField(max_length=120, blank=True, default="")
+    reviewer_notes = models.TextField(blank=True, default="")
+    reviewed_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -186,3 +189,13 @@ class VerificationCase(models.Model):
             "fraud_signals": fraud_signals,
             "reasons": reasons,
         }
+
+    def mark_review(self, decision: str, reviewer_name: str = "", notes: str = ""):
+        """Record a manual review decision."""
+        if decision not in {self.STATUS_APPROVED, self.STATUS_REJECTED, self.STATUS_REVIEW}:
+            raise ValueError("Invalid decision")
+        self.status = decision
+        self.reviewer_name = reviewer_name
+        self.reviewer_notes = notes
+        self.reviewed_at = timezone.now()
+        self.save()

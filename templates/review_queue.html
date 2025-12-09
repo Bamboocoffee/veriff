@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+    <h2>Manual review queue</h2>
+    <p class="stat-label">Approve or decline cases that need a human in the loop.</p>
+</div>
+
+<div class="layout-grid">
+    <div class="panel">
+        <h3>Needs review</h3>
+        <ul class="list">
+            {% for case, form in pending %}
+                <li class="list-item">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <div>
+                            <strong>{{ case.full_name }}</strong>
+                            <div class="stat-label">{{ case.get_document_type_display }} • {{ case.country }} • Fraud {{ case.fraud_risk_score }}</div>
+                        </div>
+                        <a class="chip" href="{% url 'case_detail' case.pk %}">Details →</a>
+                    </div>
+                    <form method="post" action="{% url 'review_case' case.pk %}">
+                        {% csrf_token %}
+                        <div class="layout-grid">
+                            <div>{{ form.decision.label_tag }}{{ form.decision }}</div>
+                            <div>{{ form.reviewer_name.label_tag }}{{ form.reviewer_name }}</div>
+                        </div>
+                        {{ form.reviewer_notes.label_tag }}{{ form.reviewer_notes }}
+                        <div class="pill-row" style="margin-top:8px;">
+                            <button type="submit">Record decision</button>
+                            <a href="{% url 'case_detail' case.pk %}" class="chip">View signals</a>
+                        </div>
+                    </form>
+                </li>
+            {% empty %}
+                <li class="list-item">
+                    <span class="badge green">No cases waiting</span>
+                    <span class="stat-label">You're all caught up.</span>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="panel">
+        <h3>Recent decisions</h3>
+        <ul class="list">
+            {% for case in recently_reviewed %}
+                <li class="list-item">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <strong>{{ case.full_name }}</strong>
+                        <span class="badge {% if case.status == 'approved' %}green{% elif case.status == 'rejected' %}red{% else %}amber{% endif %}">
+                            {{ case.get_status_display }}
+                        </span>
+                    </div>
+                    <span class="stat-label">By {{ case.reviewer_name|default:"-" }} • {{ case.reviewed_at }}</span>
+                    {% if case.reviewer_notes %}
+                        <span class="stat-label">{{ case.reviewer_notes }}</span>
+                    {% endif %}
+                </li>
+            {% empty %}
+                <li class="list-item">
+                    <span class="stat-label">No manual decisions yet.</span>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

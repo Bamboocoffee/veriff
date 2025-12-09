@@ -105,6 +105,9 @@
 <div class="panel">
     <h3>Decision</h3>
     <p class="stat-label">{{ case.risk_summary }}</p>
+    {% if case.reviewer_name %}
+        <p class="stat-label">Manual decision by {{ case.reviewer_name }} on {{ case.reviewed_at }}{% if case.reviewer_notes %}: "{{ case.reviewer_notes }}"{% endif %}</p>
+    {% endif %}
     <div class="pill-row">
         <form method="post" action="{% url 'rerun_case' case.pk %}">
             {% csrf_token %}

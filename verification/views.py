@@ -4,7 +4,7 @@ from django.db import models
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
-from .forms import VerificationCaseForm
+from .forms import ReviewDecisionForm, VerificationCaseForm
 from .models import VerificationCase
 
 
@@ -133,6 +133,31 @@ def case_detail(request, pk):
         "case_detail.html",
         {"case": case, "age": age, "fraud_signals": fraud_signals, "aml_findings": aml_findings},
     )
+
+
+def review_queue(request):
+    pending = VerificationCase.objects.filter(status=VerificationCase.STATUS_REVIEW)
+    recently_reviewed = VerificationCase.objects.filter(reviewed_at__isnull=False)[:5]
+    case_forms = [(case, ReviewDecisionForm(initial={"decision": case.status})) for case in pending]
+    return render(
+        request,
+        "review_queue.html",
+        {"pending": case_forms, "recently_reviewed": recently_reviewed},
+    )
+
+
+def review_case(request, pk):
+    case = get_object_or_404(VerificationCase, pk=pk)
+    if request.method != "POST":
+        return redirect(reverse("review_queue"))
+    form = ReviewDecisionForm(request.POST)
+    if form.is_valid():
+        case.mark_review(
+            decision=form.cleaned_data["decision"],
+            reviewer_name=form.cleaned_data.get("reviewer_name", ""),
+            notes=form.cleaned_data.get("reviewer_notes", ""),
+        )
+    return redirect(reverse("case_detail", kwargs={"pk": case.pk}))
 
 
 def rerun_case(request, pk):
