@@ -61,3 +61,23 @@ class RiskTuningForm(forms.Form):
     min_face_match = forms.IntegerField(label="Min face match %", min_value=0, max_value=100, initial=60)
     fraud_review_cutoff = forms.IntegerField(label="Fraud risk review cutoff", min_value=0, max_value=100, initial=45)
     enforce_liveness = forms.BooleanField(label="Require liveness pass", required=False, initial=True)
+
+
+class ExportFilterForm(forms.Form):
+    status = forms.MultipleChoiceField(
+        choices=VerificationCase.STATUS_CHOICES, required=False, widget=forms.CheckboxSelectMultiple
+    )
+    doc_type = forms.MultipleChoiceField(
+        choices=VerificationCase.DOC_TYPES, required=False, widget=forms.CheckboxSelectMultiple
+    )
+    date_from = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
+    date_to = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
+    min_doc_score = forms.IntegerField(required=False, min_value=0, max_value=100, label="Min doc authenticity %")
+    min_face_match = forms.IntegerField(required=False, min_value=0, max_value=100, label="Min face match %")
+    max_fraud_risk = forms.IntegerField(required=False, min_value=0, max_value=100, label="Max fraud risk")
+    limit = forms.IntegerField(required=False, min_value=1, max_value=5000, initial=500, label="Row limit")
+    export_format = forms.ChoiceField(
+        choices=[("csv", "CSV (streamed)"), ("zip", "CSV in ZIP")], initial="csv", required=True
+    )
+    include_aml = forms.BooleanField(required=False, initial=True, label="Include AML flags")
+    include_risk_summary = forms.BooleanField(required=False, initial=True, label="Include risk summary")

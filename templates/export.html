@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+    <h2>Export verifications</h2>
+    <p class="stat-label">Filter by status, document type, risk thresholds, and choose CSV or ZIP for secure ops handoff.</p>
+</div>
+
+<div class="panel">
+    <form method="get" class="form-grid">
+        <div class="layout-grid">
+            <div class="list-item">
+                <strong>Status</strong>
+                {{ form.status }}
+            </div>
+            <div class="list-item">
+                <strong>Document types</strong>
+                {{ form.doc_type }}
+            </div>
+            <div class="list-item">
+                <strong>Timeline</strong>
+                {{ form.date_from.label_tag }}{{ form.date_from }}
+                {{ form.date_to.label_tag }}{{ form.date_to }}
+            </div>
+        </div>
+        <div class="layout-grid">
+            <div class="list-item">
+                <strong>Scores</strong>
+                {{ form.min_doc_score.label_tag }}{{ form.min_doc_score }}
+                {{ form.min_face_match.label_tag }}{{ form.min_face_match }}
+                {{ form.max_fraud_risk.label_tag }}{{ form.max_fraud_risk }}
+            </div>
+            <div class="list-item">
+                <strong>Output</strong>
+                {{ form.limit.label_tag }}{{ form.limit }}
+                {{ form.export_format.label_tag }}{{ form.export_format }}
+                <div>{{ form.include_aml }} {{ form.include_aml.label_tag }}</div>
+                <div>{{ form.include_risk_summary }} {{ form.include_risk_summary.label_tag }}</div>
+            </div>
+        </div>
+        <button type="submit" name="download" value="1">Download</button>
+    </form>
+    {% if sample_count %}
+        <p class="stat-label">{{ sample_count }} rows match current filters (capped by limit).</p>
+    {% endif %}
+</div>
+{% endblock %}

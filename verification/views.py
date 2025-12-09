@@ -1,13 +1,15 @@
 from datetime import date, timedelta
 
 import csv
+import io
+import zipfile
 
 from django.db import models
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
-from .forms import ReviewDecisionForm, RiskTuningForm, VerificationCaseForm
+from .forms import ExportFilterForm, ReviewDecisionForm, RiskTuningForm, VerificationCaseForm
 from .models import VerificationCase
 
 
@@ -195,49 +197,15 @@ def sdk_playground(request):
 
 
 def export_cases_csv(request):
-    """Export recent verification cases for ops review."""
-    cases = VerificationCase.objects.all().select_related()[:200]
-    response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = 'attachment; filename="verifications.csv"'
-    writer = csv.writer(response)
-    writer.writerow(
-        [
-            "id",
-            "full_name",
-            "email",
-            "country",
-            "issuing_country",
-            "document_type",
-            "status",
-            "doc_authenticity_score",
-            "face_match_score",
-            "fraud_risk_score",
-            "age_verified",
-            "aml_pep",
-            "sanctions",
-            "created_at",
-        ]
-    )
-    for case in cases:
-        writer.writerow(
-            [
-                case.pk,
-                case.full_name,
-                case.email,
-                case.country,
-                case.issuing_country,
-                case.get_document_type_display(),
-                case.get_status_display(),
-                case.doc_authenticity_score,
-                case.face_match_score,
-                case.fraud_risk_score,
-                case.age_verified,
-                bool(case.aml_findings.get("pep")) if case.aml_findings else False,
-                bool(case.aml_findings.get("sanctions")) if case.aml_findings else False,
-                case.created_at,
-            ]
-        )
-    return response
+    """Advanced export with filters and CSV/ZIP options."""
+    form = ExportFilterForm(request.GET or None)
+    cases = VerificationCase.objects.none()
+    if form.is_valid():
+        cases = _filtered_cases(form.cleaned_data)
+        if request.GET.get("download") == "1":
+            return _stream_cases_export(cases, form.cleaned_data)
+    sample_count = cases.count() if form.is_valid() else 0
+    return render(request, "export.html", {"form": form, "sample_count": sample_count})
 
 
 def risk_tuning(request):
@@ -296,3 +264,107 @@ def simulate_decision(case: VerificationCase, thresholds: dict):
         "case": case,
         "thresholds": thresholds,
     }
+
+
+# Export helpers
+def _filtered_cases(filters):
+    qs = VerificationCase.objects.all()
+    if filters.get("status"):
+        qs = qs.filter(status__in=filters["status"])
+    if filters.get("doc_type"):
+        qs = qs.filter(document_type__in=filters["doc_type"])
+    if filters.get("date_from"):
+        qs = qs.filter(created_at__date__gte=filters["date_from"])
+    if filters.get("date_to"):
+        qs = qs.filter(created_at__date__lte=filters["date_to"])
+    if filters.get("min_doc_score") is not None:
+        qs = qs.filter(doc_authenticity_score__gte=filters["min_doc_score"])
+    if filters.get("min_face_match") is not None:
+        qs = qs.filter(face_match_score__gte=filters["min_face_match"])
+    if filters.get("max_fraud_risk") is not None:
+        qs = qs.filter(fraud_risk_score__lte=filters["max_fraud_risk"])
+    limit = filters.get("limit") or 500
+    return qs.order_by("-created_at")[:limit]
+
+
+def _stream_cases_export(cases, filters):
+    include_aml = filters.get("include_aml", True)
+    include_risk_summary = filters.get("include_risk_summary", True)
+    export_format = filters.get("export_format", "csv")
+
+    header = [
+        "id",
+        "full_name",
+        "email",
+        "country",
+        "issuing_country",
+        "document_type",
+        "status",
+        "doc_authenticity_score",
+        "face_match_score",
+        "fraud_risk_score",
+        "age_verified",
+        "created_at",
+    ]
+    if include_aml:
+        header.extend(["aml_pep", "sanctions", "adverse_media"])
+    if include_risk_summary:
+        header.append("risk_summary")
+
+    if export_format == "zip":
+        csv_buffer = io.StringIO()
+        writer = csv.writer(csv_buffer)
+        writer.writerow(header)
+        for row in _case_rows(cases, include_aml, include_risk_summary):
+            writer.writerow(row)
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("verifications.csv", csv_buffer.getvalue())
+        zip_buffer.seek(0)
+        response = HttpResponse(zip_buffer.getvalue(), content_type="application/zip")
+        response["Content-Disposition"] = 'attachment; filename="verifications.zip"'
+        return response
+
+    class Echo:
+        def write(self, value):
+            return value
+
+    writer = csv.writer(Echo())
+
+    def row_generator():
+        yield writer.writerow(header)
+        for row in _case_rows(cases, include_aml, include_risk_summary):
+            yield writer.writerow(row)
+
+    resp = HttpResponse(row_generator(), content_type="text/csv")
+    resp["Content-Disposition"] = 'attachment; filename="verifications.csv"'
+    return resp
+
+
+def _case_rows(cases, include_aml, include_risk_summary):
+    for case in cases:
+        row = [
+            case.pk,
+            case.full_name,
+            case.email,
+            case.country,
+            case.issuing_country,
+            case.get_document_type_display(),
+            case.get_status_display(),
+            case.doc_authenticity_score,
+            case.face_match_score,
+            case.fraud_risk_score,
+            case.age_verified,
+            case.created_at,
+        ]
+        if include_aml:
+            row.extend(
+                [
+                    bool(case.aml_findings.get("pep")) if case.aml_findings else False,
+                    bool(case.aml_findings.get("sanctions")) if case.aml_findings else False,
+                    bool(case.aml_findings.get("adverse_media")) if case.aml_findings else False,
+                ]
+            )
+        if include_risk_summary:
+            row.append(case.risk_summary)
+        yield row
