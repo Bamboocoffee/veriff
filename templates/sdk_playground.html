@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+    <h2>Onboarding SDK playground</h2>
+    <p>Drop-in SDKs let product teams ship a compliant verification flow without rebuilding document capture, liveness, or fraud defenses.</p>
+    <div class="layout-grid">
+        <div class="list-item">
+            <strong>SDK platforms</strong>
+            <div class="pill-row">
+                <span class="chip success">iOS</span>
+                <span class="chip success">Android</span>
+                <span class="chip success">Web</span>
+                <span class="chip warn">Headless API</span>
+            </div>
+            <p class="stat-label">Choose prebuilt UI components or style everything to your brand.</p>
+        </div>
+        <div class="list-item">
+            <strong>Configurable steps</strong>
+            <div class="pill-row">
+                <span class="chip">Document type whitelist</span>
+                <span class="chip">Age gates per market</span>
+                <span class="chip">PEP/AML toggles</span>
+                <span class="chip">Custom callbacks</span>
+            </div>
+            <p class="stat-label">Use rules per jurisdiction - e.g., passports in EU, national IDs in LATAM, driver's licences in the US.</p>
+        </div>
+    </div>
+</div>
+
+<div class="panel">
+    <h3>Happy-path flow</h3>
+    <div class="timeline">
+        {% for step in sample_steps %}
+            <div class="list-item">
+                <strong>{{ step.title }}</strong>
+                <span class="stat-label">{{ step.body }}</span>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="panel">
+    <h3>Customization hooks</h3>
+    <ul class="list">
+        {% for item in customization %}
+            <li class="list-item">{{ item }}</li>
+        {% endfor %}
+    </ul>
+    <p class="stat-label">Wire webhooks to your decisioning system or nudge to manual review with a single flag.</p>
+</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Veriff Demo</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+<header class="app-header">
+    <div class="brand">
+        <div class="logo">Veriff</div>
+        <div class="tagline">Identity and fraud safety demo</div>
+    </div>
+    <nav class="nav">
+        <a href="{% url 'dashboard' %}">Overview</a>
+        <a href="{% url 'start_verification' %}">Start verification</a>
+        <a href="{% url 'sdk_playground' %}">SDK playground</a>
+    </nav>
+</header>
+<main class="content">
+    {% block content %}{% endblock %}
+</main>
+<footer class="footer">
+    Built for the Veriff prospecting demo. Not production ready - just a taste of the flow.
+</footer>
+</body>
+</html>

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div>
+            <h2>{{ case.full_name }}</h2>
+            <div class="stat-label">{{ case.email }} • {{ case.get_document_type_display }} • {{ case.country }}</div>
+        </div>
+        <span class="badge {% if case.status == 'approved' %}green{% elif case.status == 'needs_review' %}amber{% elif case.status == 'rejected' %}red{% else %}blue{% endif %}">
+            {{ case.get_status_display }}
+        </span>
+    </div>
+    <div class="pill-row">
+        <span class="chip success">Doc {{ case.doc_authenticity_score }}%</span>
+        <span class="chip success">Face {{ case.face_match_score }}%</span>
+        <span class="chip {% if case.fraud_risk_score > 40 %}danger{% else %}warn{% endif %}">Fraud {{ case.fraud_risk_score }}</span>
+        <span class="chip {% if aml_findings.pep or aml_findings.sanctions %}danger{% else %}success{% endif %}">AML / PEP</span>
+        <span class="chip {% if case.age_verified %}success{% else %}warn{% endif %}">Age check</span>
+    </div>
+</div>
+
+<div class="layout-grid">
+    <div class="panel">
+        <h3>Identity document</h3>
+        <ul class="list">
+            <li class="list-item">
+                <strong>Document integrity</strong>
+                <span class="stat-label">Score {{ case.doc_authenticity_score }}% - holograms/fonts/MRZ sanity checks for {{ case.issuing_country }}</span>
+                <span class="stat-label">Number: {{ case.document_number }} • Expires {{ case.doc_expiry }}</span>
+            </li>
+            {% if case.country != case.issuing_country %}
+                <li class="list-item">
+                    <span class="badge amber">Jurisdiction mismatch</span>
+                    <span class="stat-label">Declared residence {{ case.country }} differs from issuing country {{ case.issuing_country }}.</span>
+                </li>
+            {% endif %}
+        </ul>
+    </div>
+    <div class="panel">
+        <h3>Biometric face match & liveness</h3>
+        <ul class="list">
+            <li class="list-item">
+                <strong>Face match</strong>
+                <span class="stat-label">Similarity {{ case.face_match_score }}% against ID photo</span>
+            </li>
+            <li class="list-item">
+                <strong>Liveness</strong>
+                <span class="stat-label">{% if case.liveness_passed %}Passed 3D/2D liveness{% else %}Additional motion check required{% endif %}</span>
+                <span class="stat-label">Capture quality: {{ case.selfie_quality }}</span>
+            </li>
+            <li class="list-item">
+                <strong>Anti-spoofing</strong>
+                <span class="stat-label">Flags: {% if case.selfie_quality < 60 %}Possible screen replay / blur{% else %}Clear{% endif %}</span>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<div class="layout-grid">
+    <div class="panel">
+        <h3>Fraud detection</h3>
+        <ul class="list">
+            <li class="list-item">
+                <strong>Risk score</strong>
+                <span class="stat-label">Device + behaviour: {{ case.fraud_risk_score }}</span>
+                <span class="stat-label">Device OS: {{ case.device_os }} • IP country: {{ case.ip_country }} • Attempts: {{ case.attempt_count }}</span>
+            </li>
+            {% for signal in fraud_signals %}
+                <li class="list-item">
+                    <span class="badge {% if case.fraud_risk_score > 40 %}red{% else %}amber{% endif %}">{{ signal }}</span>
+                </li>
+            {% empty %}
+                <li class="list-item">
+                    <span class="badge green">No anomalies</span>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="panel">
+        <h3>Age & compliance</h3>
+        <ul class="list">
+            <li class="list-item">
+                <strong>Age verification</strong>
+                <span class="stat-label">{{ age }} years old - {% if case.age_verified %}passes{% else %}fails{% endif %} 18+ gate</span>
+            </li>
+            <li class="list-item">
+                <strong>AML / PEP / sanctions</strong>
+                <span class="stat-label">
+                    PEP: {% if aml_findings.pep %}hit{% else %}clear{% endif %} •
+                    Sanctions: {% if aml_findings.sanctions %}hit{% else %}clear{% endif %} •
+                    Adverse media: {% if aml_findings.adverse_media %}hit{% else %}clear{% endif %}
+                </span>
+                {% if aml_findings.notes %}
+                    <div class="pill-row">
+                        {% for note in aml_findings.notes %}
+                            <span class="chip warn">{{ note }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </li>
+        </ul>
+    </div>
+</div>
+
+<div class="panel">
+    <h3>Decision</h3>
+    <p class="stat-label">{{ case.risk_summary }}</p>
+    <a href="{% url 'dashboard' %}" class="chip">← Back to overview</a>
+</div>
+{% endblock %}

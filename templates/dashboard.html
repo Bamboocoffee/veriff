@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+    <div class="panel">
+        <h1>Veriff verification control room</h1>
+        <p>Demo of identity document checks, face match + liveness, fraud detection, age gates, and AML/PEP screening across jurisdictions.</p>
+        <div class="pill-row">
+            <span class="chip success">10,000+ document types</span>
+            <span class="chip warn">190+ countries</span>
+            <span class="chip success">SDK-first onboarding</span>
+            <span class="chip">Velocity & device intelligence</span>
+        </div>
+        <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
+            <a href="{% url 'start_verification' %}"><button>Launch a new verification</button></a>
+            <a href="{% url 'sdk_playground' %}" class="chip">See SDK flow</a>
+        </div>
+    </div>
+    <div class="panel">
+        <h2>Today at a glance</h2>
+        <div class="layout-grid">
+            <div class="stat">
+                <span class="stat-label">Total checks</span>
+                <span class="stat-value">{{ stats.total }}</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Approved</span>
+                <span class="stat-value">{{ stats.approved }}</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Needs review</span>
+                <span class="stat-value">{{ stats.needs_review }}</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Declined</span>
+                <span class="stat-value">{{ stats.rejected }}</span>
+            </div>
+        </div>
+        <div class="layout-grid" style="margin-top:16px;">
+            <div class="list-item">
+                <span class="stat-label">Document authenticity</span>
+                <strong>{{ averages.doc_authenticity }}%</strong>
+            </div>
+            <div class="list-item">
+                <span class="stat-label">Face match</span>
+                <strong>{{ averages.face_match }}%</strong>
+            </div>
+            <div class="list-item">
+                <span class="stat-label">Fraud risk</span>
+                <strong>{{ averages.fraud_risk }}</strong>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="layout-grid">
+    <div class="panel">
+        <h2>Recent verifications</h2>
+        <ul class="list">
+            {% for case in recent_cases %}
+                <li class="list-item">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong>{{ case.full_name }}</strong>
+                        <span class="badge {% if case.status == 'approved' %}green{% elif case.status == 'needs_review' %}amber{% elif case.status == 'rejected' %}red{% else %}blue{% endif %}">
+                            {{ case.get_status_display }}
+                        </span>
+                    </div>
+                    <div class="stat-label">{{ case.get_document_type_display }} • {{ case.country }} • {{ case.onboarding_channel|upper }}</div>
+                    <div class="pill-row">
+                        <span class="chip success">Doc {{ case.doc_authenticity_score }}%</span>
+                        <span class="chip success">Face {{ case.face_match_score }}%</span>
+                        <span class="chip {% if case.fraud_risk_score > 40 %}danger{% else %}warn{% endif %}">Fraud {{ case.fraud_risk_score }}</span>
+                    </div>
+                    <a href="{% url 'case_detail' case.pk %}" class="stat-label">Open case →</a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="panel">
+        <h2>Signals under the hood</h2>
+        <div class="timeline">
+            {% for item in risk_events %}
+                <div class="list-item">
+                    <strong>{{ item }}</strong>
+                    <span class="stat-label">
+                        {% if "document" in item|lower %}
+                            MRZ validation, hologram & font checks, tamper detection tuned per issuing country.
+                        {% elif "face" in item|lower %}
+                            Active + passive liveness, selfie-to-ID photo match, anti-spoofing against masks/screens.
+                        {% elif "device" in item|lower %}
+                            Device fingerprint + velocity to stop repeated identities and inconsistent metadata.
+                        {% elif "pep" in item|lower %}
+                            Global PEP, sanctions, and adverse media to keep regulated products compliant.
+                        {% else %}
+                            Age gating for games, social, marketplaces, and on-demand.
+                        {% endif %}
+                    </span>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+    <h2>Launch a verification</h2>
+    <p>Simulate Veriff's capture flow: collect document + selfie, device metadata, and let the rules engine decide.</p>
+    {{ form.non_field_errors }}
+    <form method="post" class="form-grid">
+        {% csrf_token %}
+        <div class="layout-grid">
+            <div class="list-item">
+                <strong>Applicant</strong>
+                {{ form.full_name.label_tag }}{{ form.full_name }}{{ form.full_name.errors }}
+                {{ form.email.label_tag }}{{ form.email }}{{ form.email.errors }}
+                {{ form.date_of_birth.label_tag }}{{ form.date_of_birth }}{{ form.date_of_birth.errors }}
+                {{ form.country.label_tag }}{{ form.country }}{{ form.country.errors }}
+            </div>
+            <div class="list-item">
+                <strong>Document</strong>
+                {{ form.document_type.label_tag }}{{ form.document_type }}{{ form.document_type.errors }}
+                {{ form.document_number.label_tag }}{{ form.document_number }}{{ form.document_number.errors }}
+                {{ form.issuing_country.label_tag }}{{ form.issuing_country }}{{ form.issuing_country.errors }}
+                {{ form.doc_expiry.label_tag }}{{ form.doc_expiry }}{{ form.doc_expiry.errors }}
+            </div>
+            <div class="list-item">
+                <strong>Biometrics & fraud</strong>
+                {{ form.selfie_quality.label_tag }}{{ form.selfie_quality }}{{ form.selfie_quality.errors }}
+                {{ form.device_os.label_tag }}{{ form.device_os }}{{ form.device_os.errors }}
+                {{ form.device_fingerprint.label_tag }}{{ form.device_fingerprint }}{{ form.device_fingerprint.errors }}
+                {{ form.ip_country.label_tag }}{{ form.ip_country }}{{ form.ip_country.errors }}
+                {{ form.attempt_count.label_tag }}{{ form.attempt_count }}{{ form.attempt_count.errors }}
+                {{ form.onboarding_channel.label_tag }}{{ form.onboarding_channel }}{{ form.onboarding_channel.errors }}
+            </div>
+        </div>
+        <button type="submit">Run checks</button>
+    </form>
+</div>
+{% endblock %}
