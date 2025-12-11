@@ -9,7 +9,7 @@ import uuid
 import zipfile
 
 from django.db import models
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -279,6 +279,23 @@ def velocity_dashboard(request):
         "velocity.html",
         {"top_devices": top_devices, "top_ips": top_ips, "velocity_alerts": velocity_alerts},
     )
+
+
+def healthcheck(request):
+    """Lightweight health endpoint with verification stats."""
+    seed_demo_cases()
+    qs = VerificationCase.objects.all()
+    payload = {
+        "status": "ok",
+        "counts": {
+            "total": qs.count(),
+            "approved": qs.filter(status=VerificationCase.STATUS_APPROVED).count(),
+            "review": qs.filter(status=VerificationCase.STATUS_REVIEW).count(),
+            "rejected": qs.filter(status=VerificationCase.STATUS_REJECTED).count(),
+        },
+        "latest_case_id": qs.first().pk if qs.exists() else None,
+    }
+    return JsonResponse(payload)
 
 
 def risk_tuning(request):

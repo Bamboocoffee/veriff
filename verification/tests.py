@@ -198,3 +198,28 @@ class VelocityDashboardTests(TestCase):
         resp = self.client.get(reverse("velocity_dashboard"))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "fp-123")
+
+
+class HealthcheckTests(TestCase):
+    def test_healthcheck_returns_status_and_counts(self):
+        VerificationCase.objects.create(
+            full_name="Health User",
+            email="health@test.dev",
+            country="Estonia",
+            issuing_country="Estonia",
+            document_type=VerificationCase.DOC_PASSPORT,
+            document_number="P999",
+            date_of_birth=date(1990, 1, 1),
+            doc_expiry=date.today() + timedelta(days=365),
+            ip_country="Estonia",
+            device_os="web",
+            attempt_count=1,
+            onboarding_channel=VerificationCase.ONBOARDING_WEB,
+            selfie_quality=80,
+            status=VerificationCase.STATUS_APPROVED,
+        )
+        resp = self.client.get(reverse("healthcheck"))
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["status"], "ok")
+        self.assertGreaterEqual(data["counts"]["total"], 1)
