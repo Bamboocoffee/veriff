@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .models import VerificationCase
+from .views import build_webhook_payload, sign_payload
 
 
 class VerificationCaseEvaluationTests(TestCase):
@@ -127,3 +128,30 @@ class ExportTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp["Content-Type"], "application/zip")
+
+
+class WebhookSimulatorTests(TestCase):
+    def test_webhook_signature_generation(self):
+        case = VerificationCase.objects.create(
+            full_name="Webhook Case",
+            email="webhook@test.dev",
+            country="Estonia",
+            issuing_country="Estonia",
+            document_type=VerificationCase.DOC_PASSPORT,
+            document_number="P1234",
+            date_of_birth=date(1990, 1, 1),
+            doc_expiry=date.today() + timedelta(days=365),
+            ip_country="Estonia",
+            device_os="web",
+            attempt_count=1,
+            onboarding_channel=VerificationCase.ONBOARDING_WEB,
+            selfie_quality=85,
+        )
+        case.run_full_evaluation()
+        payload = build_webhook_payload(case, "approved")
+        sig = sign_payload(payload, secret="secret")
+        self.assertTrue(sig)
+        # Signatures should change if payload changes
+        payload["data"]["status"] = "needs_review"
+        sig2 = sign_payload(payload, secret="secret")
+        self.assertNotEqual(sig, sig2)

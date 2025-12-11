@@ -1,15 +1,20 @@
 from datetime import date, timedelta
 
 import csv
+import hashlib
+import hmac
 import io
+import json
+import uuid
 import zipfile
 
 from django.db import models
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 
-from .forms import ExportFilterForm, ReviewDecisionForm, RiskTuningForm, VerificationCaseForm
+from .forms import ExportFilterForm, ReviewDecisionForm, RiskTuningForm, VerificationCaseForm, WebhookSimulatorForm
 from .models import VerificationCase
 
 
@@ -196,6 +201,47 @@ def sdk_playground(request):
     )
 
 
+def webhook_simulator(request):
+    """Generate a signed webhook payload to test integrations."""
+    seed_demo_cases()
+    form = WebhookSimulatorForm(request.POST or None)
+    payload = None
+    signature = None
+    payload_json = None
+    if form.is_valid():
+        case = VerificationCase.objects.order_by("-created_at").first()
+        if not case:
+            case = VerificationCase.objects.create(
+                full_name="Webhook Sample",
+                email="demo@veriff.test",
+                country="Estonia",
+                issuing_country="Estonia",
+                document_type=VerificationCase.DOC_PASSPORT,
+                document_number="P0000",
+                date_of_birth=date(1990, 1, 1),
+                doc_expiry=date.today() + timedelta(days=365),
+                ip_country="Estonia",
+                device_os="web",
+                attempt_count=1,
+                onboarding_channel=VerificationCase.ONBOARDING_WEB,
+                selfie_quality=80,
+            )
+            case.run_full_evaluation()
+        payload = build_webhook_payload(
+            case,
+            decision=form.cleaned_data["decision"],
+            include_aml=form.cleaned_data.get("include_aml", True),
+            include_device=form.cleaned_data.get("include_device", True),
+        )
+        signature = sign_payload(payload)
+        payload_json = json.dumps(payload, indent=2)
+    return render(
+        request,
+        "webhook_simulator.html",
+        {"form": form, "payload": payload_json, "signature": signature, "callback_url": form["callback_url"].value()},
+    )
+
+
 def export_cases_csv(request):
     """Advanced export with filters and CSV/ZIP options."""
     form = ExportFilterForm(request.GET or None)
@@ -264,6 +310,47 @@ def simulate_decision(case: VerificationCase, thresholds: dict):
         "case": case,
         "thresholds": thresholds,
     }
+
+
+def build_webhook_payload(case: VerificationCase, decision: str, include_aml=True, include_device=True):
+    data = {
+        "case_id": case.pk,
+        "status": decision,
+        "full_name": case.full_name,
+        "document_type": case.document_type,
+        "country": case.country,
+        "scores": {
+            "doc_authenticity": case.doc_authenticity_score,
+            "face_match": case.face_match_score,
+            "fraud_risk": case.fraud_risk_score,
+        },
+        "age_verified": case.age_verified,
+        "created_at": case.created_at.isoformat() if case.created_at else "",
+    }
+    if include_aml:
+        data["aml"] = {
+            "pep": bool(case.aml_findings.get("pep")) if case.aml_findings else False,
+            "sanctions": bool(case.aml_findings.get("sanctions")) if case.aml_findings else False,
+            "adverse_media": bool(case.aml_findings.get("adverse_media")) if case.aml_findings else False,
+        }
+    if include_device:
+        data["device"] = {
+            "device_os": case.device_os,
+            "ip_country": case.ip_country,
+            "fingerprint": case.device_fingerprint,
+        }
+    payload = {
+        "id": str(uuid.uuid4()),
+        "type": f"verification.{decision}",
+        "data": data,
+        "delivered_at": timezone.now().isoformat(),
+    }
+    return payload
+
+
+def sign_payload(payload: dict, secret: str = "demo_webhook_secret") -> str:
+    serialized = json.dumps(payload, sort_keys=True).encode()
+    return hmac.new(secret.encode(), serialized, hashlib.sha256).hexdigest()
 
 
 # Export helpers

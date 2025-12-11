@@ -81,3 +81,17 @@ class ExportFilterForm(forms.Form):
     )
     include_aml = forms.BooleanField(required=False, initial=True, label="Include AML flags")
     include_risk_summary = forms.BooleanField(required=False, initial=True, label="Include risk summary")
+
+
+class WebhookSimulatorForm(forms.Form):
+    callback_url = forms.URLField(label="Callback URL", initial="https://api.yourapp.test/webhooks/veriff")
+    decision = forms.ChoiceField(
+        choices=[
+            ("approved", "Approved"),
+            ("needs_review", "Needs review"),
+            ("rejected", "Rejected"),
+        ],
+        initial="approved",
+    )
+    include_aml = forms.BooleanField(required=False, initial=True, label="Include AML flags")
+    include_device = forms.BooleanField(required=False, initial=True, label="Include device metadata")

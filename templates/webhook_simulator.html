@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+    <h2>Webhook simulator</h2>
+    <p class="stat-label">Generate a signed webhook payload to test your listener without waiting for a real verification.</p>
+</div>
+
+<div class="panel">
+    <form method="post" class="form-grid">
+        {% csrf_token %}
+        <div class="layout-grid">
+            <div class="list-item">
+                {{ form.callback_url.label_tag }}{{ form.callback_url }}
+            </div>
+            <div class="list-item">
+                {{ form.decision.label_tag }}{{ form.decision }}
+                <div>{{ form.include_aml }} {{ form.include_aml.label_tag }}</div>
+                <div>{{ form.include_device }} {{ form.include_device.label_tag }}</div>
+            </div>
+        </div>
+        <button type="submit">Generate payload</button>
+    </form>
+</div>
+
+{% if payload %}
+<div class="panel">
+    <h3>Payload</h3>
+    <pre style="white-space:pre-wrap;">{{ payload }}</pre>
+    <div class="list-item">
+        <strong>Signature (HMAC SHA-256)</strong>
+        <code>{{ signature }}</code>
+    </div>
+    <div class="list-item">
+<pre><code class="bash">curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "X-Veriff-Signature: {{ signature }}" \
+  -d @- "{{ callback_url }}"
+&lt;&lt;'JSON'
+{{ payload|safe }}
+JSON</code></pre>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
