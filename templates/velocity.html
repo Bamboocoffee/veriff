@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+    <h2>Velocity intelligence</h2>
+    <p class="stat-label">See repeated device fingerprints, risky IP origins, and velocity patterns to stop multi-identity abuse.</p>
+</div>
+
+<div class="panel">
+    <h3>Hot devices</h3>
+    <ul class="list">
+        {% for device in top_devices %}
+            <li class="list-item">
+                <strong>{{ device.device_fingerprint|default:"(blank)" }}</strong>
+                <span class="stat-label">Seen {{ device.count }} time(s) • Max fraud risk {{ device.max_risk }}</span>
+                <span class="stat-label">Last seen: {{ device.last_seen }}</span>
+            </li>
+        {% empty %}
+            <li class="list-item"><span class="stat-label">No device fingerprints captured yet.</span></li>
+        {% endfor %}
+    </ul>
+</div>
+
+<div class="panel">
+    <h3>IP country reuse</h3>
+    <ul class="list">
+        {% for ip in top_ips %}
+            <li class="list-item">
+                <strong>{{ ip.ip_country }}</strong>
+                <span class="stat-label">Seen {{ ip.count }} time(s) • Max fraud risk {{ ip.max_risk }}</span>
+            </li>
+        {% empty %}
+            <li class="list-item"><span class="stat-label">No IP metadata yet.</span></li>
+        {% endfor %}
+    </ul>
+</div>
+
+<div class="panel">
+    <h3>Velocity alerts</h3>
+    <ul class="list">
+        {% for alert in velocity_alerts %}
+            <li class="list-item">
+                <span class="badge red">High reuse</span>
+                <span class="stat-label">{{ alert.device_fingerprint }} seen {{ alert.count }} times with max fraud risk {{ alert.max_risk }}</span>
+            </li>
+        {% empty %}
+            <li class="list-item"><span class="stat-label">No reuse patterns above threshold.</span></li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

@@ -254,6 +254,33 @@ def export_cases_csv(request):
     return render(request, "export.html", {"form": form, "sample_count": sample_count})
 
 
+def velocity_dashboard(request):
+    """Show device/IP reuse and velocity signals."""
+    seed_demo_cases()
+    top_devices = (
+        VerificationCase.objects.exclude(device_fingerprint="")
+        .values("device_fingerprint")
+        .annotate(
+            count=models.Count("id"),
+            max_risk=models.Max("fraud_risk_score"),
+            last_seen=models.Max("created_at"),
+        )
+        .order_by("-count")[:10]
+    )
+    top_ips = (
+        VerificationCase.objects.exclude(ip_country="")
+        .values("ip_country")
+        .annotate(count=models.Count("id"), max_risk=models.Max("fraud_risk_score"))
+        .order_by("-count")[:10]
+    )
+    velocity_alerts = [d for d in top_devices if d["count"] > 1 and d["max_risk"] >= 40]
+    return render(
+        request,
+        "velocity.html",
+        {"top_devices": top_devices, "top_ips": top_ips, "velocity_alerts": velocity_alerts},
+    )
+
+
 def risk_tuning(request):
     """Adjust thresholds and preview how a case would be decided."""
     cases = VerificationCase.objects.all()

@@ -12,5 +12,6 @@ urlpatterns = [
     path("export/", views.export_cases_csv, name="export_cases_csv"),
     path("risk-tuning/", views.risk_tuning, name="risk_tuning"),
     path("webhook-simulator/", views.webhook_simulator, name="webhook_simulator"),
+    path("velocity/", views.velocity_dashboard, name="velocity_dashboard"),
     path("sdk-playground/", views.sdk_playground, name="sdk_playground"),
 ]

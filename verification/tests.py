@@ -155,3 +155,46 @@ class WebhookSimulatorTests(TestCase):
         payload["data"]["status"] = "needs_review"
         sig2 = sign_payload(payload, secret="secret")
         self.assertNotEqual(sig, sig2)
+
+
+class VelocityDashboardTests(TestCase):
+    def setUp(self):
+        VerificationCase.objects.bulk_create(
+            [
+                VerificationCase(
+                    full_name="User A",
+                    email="a@test.dev",
+                    country="Estonia",
+                    issuing_country="Estonia",
+                    document_type=VerificationCase.DOC_PASSPORT,
+                    document_number="P111",
+                    date_of_birth=date(1990, 1, 1),
+                    doc_expiry=date.today() + timedelta(days=365),
+                    ip_country="Estonia",
+                    device_os="web",
+                    device_fingerprint="fp-123",
+                    fraud_risk_score=10,
+                    status=VerificationCase.STATUS_APPROVED,
+                ),
+                VerificationCase(
+                    full_name="User B",
+                    email="b@test.dev",
+                    country="Estonia",
+                    issuing_country="Estonia",
+                    document_type=VerificationCase.DOC_PASSPORT,
+                    document_number="P222",
+                    date_of_birth=date(1990, 1, 1),
+                    doc_expiry=date.today() + timedelta(days=365),
+                    ip_country="Estonia",
+                    device_os="web",
+                    device_fingerprint="fp-123",
+                    fraud_risk_score=65,
+                    status=VerificationCase.STATUS_REVIEW,
+                ),
+            ]
+        )
+
+    def test_velocity_page_shows_reused_fingerprint(self):
+        resp = self.client.get(reverse("velocity_dashboard"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "fp-123")
