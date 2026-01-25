@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+    <h2>SLA dashboard</h2>
+    <p class="stat-label">Track time-to-decision performance across completed verifications.</p>
+</div>
+
+<div class="layout-grid">
+    <div class="panel">
+        <h3>Latency stats</h3>
+        <div class="layout-grid">
+            <div class="stat">
+                <span class="stat-label">Completed cases</span>
+                <span class="stat-value">{{ stats.count }}</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Avg seconds</span>
+                <span class="stat-value">{{ stats.avg_seconds }}</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Median</span>
+                <span class="stat-value">{{ stats.median_seconds }}</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">P95</span>
+                <span class="stat-value">{{ stats.p95_seconds }}</span>
+            </div>
+        </div>
+    </div>
+    <div class="panel">
+        <h3>Latency buckets</h3>
+        <ul class="list">
+            <li class="list-item"><strong>Under 60s</strong><span class="stat-label">{{ buckets.under_60s }}</span></li>
+            <li class="list-item"><strong>Under 5m</strong><span class="stat-label">{{ buckets.under_5m }}</span></li>
+            <li class="list-item"><strong>Under 15m</strong><span class="stat-label">{{ buckets.under_15m }}</span></li>
+            <li class="list-item"><strong>Over 15m</strong><span class="stat-label">{{ buckets.over_15m }}</span></li>
+        </ul>
+    </div>
+</div>
+
+<div class="panel">
+    <h3>Slowest cases</h3>
+    <ul class="list">
+        {% for entry in slowest %}
+            <li class="list-item">
+                <strong>{{ entry.case.full_name }}</strong>
+                <span class="stat-label">Case {{ entry.case.pk }} • {{ entry.case.get_status_display }}</span>
+                <span class="stat-label">{{ entry.seconds }} seconds</span>
+            </li>
+        {% empty %}
+            <li class="list-item"><span class="stat-label">No completed cases yet.</span></li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

@@ -14,5 +14,6 @@ urlpatterns = [
     path("webhook-simulator/", views.webhook_simulator, name="webhook_simulator"),
     path("velocity/", views.velocity_dashboard, name="velocity_dashboard"),
     path("healthcheck/", views.healthcheck, name="healthcheck"),
+    path("sla/", views.sla_dashboard, name="sla_dashboard"),
     path("sdk-playground/", views.sdk_playground, name="sdk_playground"),
 ]

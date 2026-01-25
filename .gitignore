@@ -5,3 +5,4 @@ verification/__pycache__/
 *.pyd
 db.sqlite3
 /.venv/
+.DS_Store
