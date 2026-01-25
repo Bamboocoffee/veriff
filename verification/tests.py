@@ -246,3 +246,27 @@ class AuditTrailTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         case = VerificationCase.objects.get(email="audit@test.dev")
         self.assertTrue(AuditEvent.objects.filter(case=case, event_type=AuditEvent.EVENT_CREATED).exists())
+
+
+class SlaDashboardTests(TestCase):
+    def test_sla_dashboard_renders(self):
+        case = VerificationCase.objects.create(
+            full_name="SLA User",
+            email="sla@test.dev",
+            country="Estonia",
+            issuing_country="Estonia",
+            document_type=VerificationCase.DOC_PASSPORT,
+            document_number="P4444",
+            date_of_birth=date(1990, 1, 1),
+            doc_expiry=date.today() + timedelta(days=365),
+            ip_country="Estonia",
+            device_os="web",
+            attempt_count=1,
+            onboarding_channel=VerificationCase.ONBOARDING_WEB,
+            selfie_quality=80,
+            status=VerificationCase.STATUS_APPROVED,
+        )
+        VerificationCase.objects.filter(pk=case.pk).update(updated_at=case.created_at + timedelta(minutes=12))
+        resp = self.client.get(reverse("sla_dashboard"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "SLA dashboard")

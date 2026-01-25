@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import io
 import json
+import math
 import uuid
 import zipfile
 
@@ -311,6 +312,43 @@ def healthcheck(request):
     return JsonResponse(payload)
 
 
+def sla_dashboard(request):
+    """Summarize time-to-decision performance for ops teams."""
+    seed_demo_cases()
+    completed = VerificationCase.objects.filter(status__in=[VerificationCase.STATUS_APPROVED, VerificationCase.STATUS_REJECTED])
+    durations = []
+    for case in completed:
+        if case.updated_at and case.created_at:
+            durations.append((case.updated_at - case.created_at).total_seconds())
+
+    durations_sorted = sorted(durations)
+    stats = {
+        "count": len(durations_sorted),
+        "avg_seconds": int(sum(durations_sorted) / len(durations_sorted)) if durations_sorted else 0,
+        "median_seconds": _percentile(durations_sorted, 0.5),
+        "p95_seconds": _percentile(durations_sorted, 0.95),
+    }
+    buckets = {
+        "under_60s": sum(1 for d in durations_sorted if d <= 60),
+        "under_5m": sum(1 for d in durations_sorted if d <= 300),
+        "under_15m": sum(1 for d in durations_sorted if d <= 900),
+        "over_15m": sum(1 for d in durations_sorted if d > 900),
+    }
+    slowest = [
+        {
+            "case": case,
+            "seconds": int((case.updated_at - case.created_at).total_seconds()),
+        }
+        for case in completed.order_by("-updated_at")[:10]
+        if case.updated_at and case.created_at
+    ]
+    return render(
+        request,
+        "sla_dashboard.html",
+        {"stats": stats, "buckets": buckets, "slowest": slowest},
+    )
+
+
 def risk_tuning(request):
     """Adjust thresholds and preview how a case would be decided."""
     cases = VerificationCase.objects.all()
@@ -512,3 +550,16 @@ def _case_rows(cases, include_aml, include_risk_summary):
         if include_risk_summary:
             row.append(case.risk_summary)
         yield row
+
+
+def _percentile(values, fraction):
+    if not values:
+        return 0
+    k = (len(values) - 1) * fraction
+    f = math.floor(k)
+    c = math.ceil(k)
+    if f == c:
+        return int(values[int(k)])
+    d0 = values[int(f)] * (c - k)
+    d1 = values[int(c)] * (k - f)
+    return int(d0 + d1)
