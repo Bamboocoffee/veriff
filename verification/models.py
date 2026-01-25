@@ -199,3 +199,31 @@ class VerificationCase(models.Model):
         self.reviewer_notes = notes
         self.reviewed_at = timezone.now()
         self.save()
+
+    def log_event(self, event_type: str, message: str):
+        AuditEvent.objects.create(case=self, event_type=event_type, message=message)
+
+
+class AuditEvent(models.Model):
+    EVENT_CREATED = "created"
+    EVENT_REVIEW = "review"
+    EVENT_RERUN = "rerun"
+    EVENT_NOTE = "note"
+
+    EVENT_CHOICES = [
+        (EVENT_CREATED, "Created"),
+        (EVENT_REVIEW, "Manual review"),
+        (EVENT_RERUN, "Re-run"),
+        (EVENT_NOTE, "Note"),
+    ]
+
+    case = models.ForeignKey(VerificationCase, related_name="audit_events", on_delete=models.CASCADE)
+    event_type = models.CharField(max_length=24, choices=EVENT_CHOICES)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.case_id}:{self.event_type}"

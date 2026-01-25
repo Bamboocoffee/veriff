@@ -15,7 +15,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .forms import ExportFilterForm, ReviewDecisionForm, RiskTuningForm, VerificationCaseForm, WebhookSimulatorForm
-from .models import VerificationCase
+from .models import AuditEvent, VerificationCase
 
 
 def seed_demo_cases():
@@ -127,6 +127,7 @@ def start_verification(request):
             case = form.save(commit=False)
             case.run_full_evaluation(save=False)
             case.save()
+            case.log_event(AuditEvent.EVENT_CREATED, "Verification case created via onboarding flow")
             return redirect(reverse("case_detail", kwargs={"pk": case.pk}))
     else:
         form = VerificationCaseForm(initial=initial)
@@ -138,10 +139,17 @@ def case_detail(request, pk):
     age, _ = case.evaluate_age()
     fraud_signals = case.fraud_signals or []
     aml_findings = case.aml_findings or {}
+    audit_events = case.audit_events.all()[:10]
     return render(
         request,
         "case_detail.html",
-        {"case": case, "age": age, "fraud_signals": fraud_signals, "aml_findings": aml_findings},
+        {
+            "case": case,
+            "age": age,
+            "fraud_signals": fraud_signals,
+            "aml_findings": aml_findings,
+            "audit_events": audit_events,
+        },
     )
 
 
@@ -167,6 +175,10 @@ def review_case(request, pk):
             reviewer_name=form.cleaned_data.get("reviewer_name", ""),
             notes=form.cleaned_data.get("reviewer_notes", ""),
         )
+        case.log_event(
+            AuditEvent.EVENT_REVIEW,
+            f"Manual decision: {case.get_status_display()}",
+        )
     return redirect(reverse("case_detail", kwargs={"pk": case.pk}))
 
 
@@ -175,6 +187,7 @@ def rerun_case(request, pk):
     case = get_object_or_404(VerificationCase, pk=pk)
     if request.method == "POST":
         case.run_full_evaluation()
+        case.log_event(AuditEvent.EVENT_RERUN, "Verification checks re-run")
         return redirect(reverse("case_detail", kwargs={"pk": case.pk}))
     return redirect(reverse("case_detail", kwargs={"pk": case.pk}))
 

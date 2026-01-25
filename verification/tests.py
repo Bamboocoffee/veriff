@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import VerificationCase
+from .models import AuditEvent, VerificationCase
 from .views import build_webhook_payload, sign_payload
 
 
@@ -223,3 +223,26 @@ class HealthcheckTests(TestCase):
         data = resp.json()
         self.assertEqual(data["status"], "ok")
         self.assertGreaterEqual(data["counts"]["total"], 1)
+
+
+class AuditTrailTests(TestCase):
+    def test_audit_event_created_on_case_creation(self):
+        payload = {
+            "full_name": "Audit User",
+            "email": "audit@test.dev",
+            "country": "Estonia",
+            "issuing_country": "Estonia",
+            "document_type": VerificationCase.DOC_PASSPORT,
+            "document_number": "P3333",
+            "date_of_birth": date(1990, 1, 1),
+            "doc_expiry": date.today() + timedelta(days=365),
+            "ip_country": "Estonia",
+            "device_os": "web",
+            "attempt_count": 1,
+            "onboarding_channel": VerificationCase.ONBOARDING_WEB,
+            "selfie_quality": 80,
+        }
+        resp = self.client.post(reverse("start_verification"), payload)
+        self.assertEqual(resp.status_code, 302)
+        case = VerificationCase.objects.get(email="audit@test.dev")
+        self.assertTrue(AuditEvent.objects.filter(case=case, event_type=AuditEvent.EVENT_CREATED).exists())

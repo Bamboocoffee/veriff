@@ -116,4 +116,19 @@
         <a href="{% url 'dashboard' %}" class="chip">← Back to overview</a>
     </div>
 </div>
+
+<div class="panel">
+    <h3>Audit trail</h3>
+    <ul class="list">
+        {% for event in audit_events %}
+            <li class="list-item">
+                <strong>{{ event.get_event_type_display }}</strong>
+                <span class="stat-label">{{ event.message }}</span>
+                <span class="stat-label">{{ event.created_at }}</span>
+            </li>
+        {% empty %}
+            <li class="list-item"><span class="stat-label">No audit events yet.</span></li>
+        {% endfor %}
+    </ul>
+</div>
 {% endblock %}
